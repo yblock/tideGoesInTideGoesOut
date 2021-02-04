@@ -4,4 +4,4 @@ tideconfig.py
 boughtIn.pickle
 dataframe.pickle
 state.pickle
-__pycache__/tideconfig.cpython-39.pyc
+__pycache__*
