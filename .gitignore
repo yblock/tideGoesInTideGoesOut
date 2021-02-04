@@ -1,0 +1,7 @@
+
+tideconfig.py
+.DS_Store
+boughtIn.pickle
+dataframe.pickle
+state.pickle
+__pycache__/tideconfig.cpython-39.pyc
