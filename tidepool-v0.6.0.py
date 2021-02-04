@@ -31,7 +31,6 @@ class coin:
 class moneyBot:
 
     #set these in tideconfig.py
-
     tradesEnabled = False
     buyBelowMA = 0.00
     sellAboveBuyPrice = .00
@@ -39,11 +38,9 @@ class moneyBot:
     rsiWindow = 0
     runMinute = []
     coinList = []
-
     coinState = []
     minIncrements = {}  #the smallest increment of a coin you can buy/sell
     minPriceIncrements = {}   #the smallest fraction of a dollar you can buy/sell a coin with
-
     data = pd.DataFrame()
     boughtIn = False
 
@@ -134,7 +131,7 @@ class moneyBot:
                 return emptyDict
 
             prices.update({c: float(price)})
-
+            
         return prices
 
     def saveState(self):
@@ -188,8 +185,8 @@ class moneyBot:
             print("Previous sale incomplete.")
             return
 
-
         coinHeld = self.getHoldings(self.coinState[c].name)
+        
         if coinHeld == -1:
             print("Got exception trying to get holdings in sell(), cancelling.")
             return
@@ -303,7 +300,6 @@ class moneyBot:
             if price > self.coinState[c].purchasedPrice + (self.coinState[c].purchasedPrice * 0.05) and self.coinState[c].numHeld > 0.0:
                 return True
 
-
         return False
 
     def checkConsecutive(self, now):
@@ -326,9 +322,9 @@ class moneyBot:
         for x in range(0, self.minConsecutiveSamples):
             t1 = self.data.iloc[position - x]['exec_time']
             t2 = self.data.iloc[position - (x + 1)]['exec_time']
-            # print(str(t1) + "," + str(t2))
             timeDelta = t1 - t2
             minutes = (timeDelta.seconds/60)
+            
             if minutes > self.minutesBetweenUpdates:
                 print("Interruption found in price data, holding buys until sufficient samples are collected.\n")
                 return False
@@ -374,7 +370,6 @@ class moneyBot:
             self.data[c + "_bolM"] = middle
             self.data[c + "_bolB"] = bottom
 
-
         print(self.data.tail(12))
 
         return self.data
@@ -404,8 +399,6 @@ class moneyBot:
         self.minIncrements = {}
         self.minPriceIncrements = {}
 
-        #also need min_order_price_increment
-
         for c in range(0, len(self.coinList)):
             code = self.coinList[c]
 
@@ -432,8 +425,6 @@ class moneyBot:
 
     def printState(self):
 
-
-        print("\n")
         print("Bought In:" + str(self.boughtIn))
 
         for c in self.coinState:
