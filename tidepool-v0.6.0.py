@@ -1,12 +1,9 @@
-
 import pickle
 import os.path as path
 import datetime
 import time
 import pandas as pd
 import math
-import os
-import syslog
 import robin_stocks as r
 import tideconfig as cfg
 import talib
@@ -47,7 +44,6 @@ class moneyBot:
     # used to determine if we have had a break in our incoming price data and hold buys if so
     minutesBetweenUpdates = 2
     buysLockedCounter = 0
-    lastHeartbeat = datetime.datetime.now()
     minConsecutiveSamples = 0
     pricesGood = False
 
@@ -110,12 +106,8 @@ class moneyBot:
         print("\n")
 
     def output(self, msg):
-        # send email
-        cmd = "echo \"" + msg + "\" | mail -s \"Bot\" " + self.statusEmailAddress
-        os.system(cmd)
+
         print(msg)
-        # write to syslog
-        syslog.syslog(syslog.LOG_NOTICE, msg)
 
     def getPrices(self):
 
@@ -131,7 +123,7 @@ class moneyBot:
                 return emptyDict
 
             prices.update({c: float(price)})
-            
+
         return prices
 
     def saveState(self):
@@ -186,7 +178,7 @@ class moneyBot:
             return
 
         coinHeld = self.getHoldings(self.coinState[c].name)
-        
+
         if coinHeld == -1:
             print("Got exception trying to get holdings in sell(), cancelling.")
             return
@@ -206,13 +198,13 @@ class moneyBot:
                 try:
                     sellResult = r.order_sell_crypto_limit(str(self.coinList[c]), coinHeld, price)
                     self.coinState[c].lastSellOrder = sellResult['id']
-                    self.output(str(sellResult))
+                    print(str(sellResult))
                 except:
                     print("Got exception trying to sell, cancelling.")
                     return
 
-                msg = "LiveBot: Sold " + str(coinHeld) + " of " + str(self.coinList[c]) + " at price " + str(price) + " profit " + str(round(profit, 2))
-                self.output(msg)
+                print("LiveBot: Sold " + str(coinHeld) + " of " + str(self.coinList[c]) + " at price " + str(price) + " profit " + str(round(profit, 2)))
+
 
                 self.coinState[c].purchasedPrice = 0.0
                 self.coinState[c].numHeld = 0.0
@@ -251,13 +243,12 @@ class moneyBot:
                 try:
                     buyResult = r.order_buy_crypto_limit(str(self.coinList[c]), shares, price)
                     self.coinState[c].lastBuyOrderID = buyResult['id']
-                    self.output(str(buyResult))
+                    print(str(buyResult))
                 except:
                     print("Got exception trying to buy, cancelling.")
                     return
 
-                msg = "LiveBot: Bought " + str(shares) + " shares of " + self.coinList[c] + " at " + str(price) + " selling at " + str(round(sellAt, 2))
-                self.output(msg)
+                print("LiveBot: Bought " + str(shares) + " shares of " + self.coinList[c] + " at " + str(price) + " selling at " + str(round(sellAt, 2)))
                 self.coinState[c].purchasedPrice = price
                 self.coinState[c].numHeld = shares
                 self.coinState[c].timeBought = str(datetime.datetime.now())
@@ -324,7 +315,7 @@ class moneyBot:
             t2 = self.data.iloc[position - (x + 1)]['exec_time']
             timeDelta = t1 - t2
             minutes = (timeDelta.seconds/60)
-            
+
             if minutes > self.minutesBetweenUpdates:
                 print("Interruption found in price data, holding buys until sufficient samples are collected.\n")
                 return False
@@ -370,7 +361,7 @@ class moneyBot:
             self.data[c + "_bolM"] = middle
             self.data[c + "_bolB"] = bottom
 
-        print(self.data.tail(12))
+        print(self.data.tail(30))
 
         return self.data
 
@@ -381,7 +372,7 @@ class moneyBot:
             print("Restoring state...")
 
             self.data = pd.read_pickle('dataframe.pickle')
-            print(self.data.tail(12))
+            print(self.data.tail(30))
 
         else:
 
@@ -443,12 +434,12 @@ class moneyBot:
         print("\n")
 
     def cancelOrder(self, orderID):
-        self.output("Swing and miss, cancelling order " + orderID)
+        print("Swing and miss, cancelling order " + orderID)
         try:
             cancelResult = r.cancel_crypto_order(orderID)
             print(str(cancelResult))
         except:
-            self.output("Got exception canceling order, will try again.")
+            print("Got exception canceling order, will try again.")
             return False
         return True
 
@@ -459,14 +450,6 @@ class moneyBot:
         while (True):
 
             now = datetime.datetime.now()
-
-            timeDiffHeartbeat = now - self.lastHeartbeat
-
-            #report in not being dead every 12 hours
-            if (timeDiffHeartbeat.total_seconds() > (60 * 60 * 12)):
-                msg = "Bot: Heartbeat"
-                self.output(msg)
-                self.lastHeartbeat = now
 
             #is it time to pull prices?
             if (now.minute in self.runMinute):
