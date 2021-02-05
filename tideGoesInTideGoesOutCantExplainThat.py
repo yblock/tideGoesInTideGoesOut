@@ -7,6 +7,7 @@ import math
 import robin_stocks as r
 import tideconfig as cfg
 import talib
+import mplfinance as mpf
 
 class coin:
     purchasedPrice = 0.0
@@ -71,9 +72,6 @@ class moneyBot:
 
         self.data = self.loadDataframe()
         Result = r.login(self.rh_user, self.rh_pw)
-        #print("\n")
-        #print(loginResult)
-        #print("\n")
         self.getIncrements()
 
         return
@@ -82,10 +80,6 @@ class moneyBot:
         print("\nLoading Config...")
         self.rh_user = cfg.rh["username"]
         self.rh_pw = cfg.rh["password"]
-        self.statusEmailAddress = cfg.config["statusEmailAddress"]
-        print("Status Email: " + self.statusEmailAddress)
-        self.buyBelowMA = float(cfg.config["buyLimit"])
-        print("Buy Limit " + str(self.buyBelowMA * 100) + "%")
         self.sellAboveBuyPrice = float(cfg.config["sellLimit"])
         print("Sell Limit " + str(self.sellAboveBuyPrice * 100) + "%")
         self.movingAverageWindows = cfg.config["movingAverageWindows"]
@@ -104,10 +98,6 @@ class moneyBot:
         print("Consecutive prices required: " + str(self.minConsecutiveSamples))
 
         print("\n")
-
-    def output(self, msg):
-
-        print(msg)
 
     def getPrices(self):
 
@@ -153,9 +143,10 @@ class moneyBot:
         return float(quantity)
 
     def getCash(self):
-        # if you only want to trade part of your money, set this to (Available Cash - Amount to Trade)
 
-        reserve = 0.00
+        # if you only want to trade part of your money, set this to (Available Cash - Amount to Trade)
+        reserve = 0.25
+
         try:
             me = r.account.load_phoenix_account(info=None)
             cash = float(me['crypto_buying_power']['amount'])
@@ -163,17 +154,14 @@ class moneyBot:
             print("An exception occurred getting cash amount.")
             return -1.0
 
-        if cash - reserve < 0.0:
+        if cash * reserve < 0.0:
             return 0.0
         else:
-            return cash - reserve
+            return cash * reserve
 
     def sell(self, c, price):
 
-        #if boughtIn == false but coinHeld > 0 an order has not completed
-
         if self.boughtIn == False:
-            #a previous sell has not completed. We are marked as not in the market but still holding coin, abort sale.
             print("Previous sale incomplete.")
             return
 
@@ -248,7 +236,7 @@ class moneyBot:
                     print("Got exception trying to buy, cancelling.")
                     return
 
-                print("LiveBot: Bought " + str(shares) + " shares of " + self.coinList[c] + " at " + str(price) + " selling at " + str(round(sellAt, 2)))
+                print("Bought " + str(shares) + " shares of " + self.coinList[c] + " at " + str(price) + " selling at " + str(round(sellAt, 2)))
                 self.coinState[c].purchasedPrice = price
                 self.coinState[c].numHeld = shares
                 self.coinState[c].timeBought = str(datetime.datetime.now())
@@ -270,9 +258,8 @@ class moneyBot:
         bolB = self.data.iloc[-1][str(self.coinList[c]) + "_bolB"]
 
         if math.isnan(movingAverage) == False and math.isnan(RSI) == False and math.isnan(bolB) == False:
-            print(bolB)
             # attempt to buy if the price falls out of the bottom of bottom bollinger band and RSI is low. This should catch hard swings down that have a high likelyhood of recovering quickly.
-            if price < bolB and self.coinState[c].numHeld == 0.0 and (RSI <= 25):
+            if (price < bolB) and (RSI <= 25):
                 print("Conditions met to buy! " + str(self.coinList[c]) + " fell out of bottom bollinger, and RSI is below 25... buying...")
                 return True
 
@@ -280,17 +267,16 @@ class moneyBot:
 
     def checkSellCondition(self, c):
 
-    # look at values in last row only
+        # look at values in last row only
         price = self.data.iloc[-1][self.coinList[c]]
-        movingAverage = self.data.iloc[-1][str(self.coinList[c]) + "_SMA"]
+        # movingAverage = self.data.iloc[-1][str(self.coinList[c]) + "_SMA"]
         RSI = self.data.iloc[-1][str(self.coinList[c]) + "_RSI"]
 
-        if math.isnan(movingAverage) == False and math.isnan(RSI) == False:
+        if math.isnan(RSI) == False and self.coinState[c].purchasedPrice > 0.0:
             if (price > self.coinState[c].purchasedPrice + (self.coinState[c].purchasedPrice * self.sellAboveBuyPrice) and RSI > 69) and self.coinState[c].numHeld > 0.0:
                 return True
             if price > self.coinState[c].purchasedPrice + (self.coinState[c].purchasedPrice * 0.05) and self.coinState[c].numHeld > 0.0:
                 return True
-
         return False
 
     def checkConsecutive(self, now):
@@ -317,13 +303,14 @@ class moneyBot:
             minutes = (timeDelta.seconds/60)
 
             if minutes > self.minutesBetweenUpdates:
-                print("Interruption found in price data, holding buys until sufficient samples are collected.\n")
+                print("Interruption found in price data, holding buys until " + str(self.minutesBetweenUpdates) + " > " + str(minutes))
                 return False
 
         return True
 
     def updateDataframe(self, now):
         #we check this each time, so we don't need to lock for more than two cycles. It will set back to two if it fails on the next pass.
+        print("data shape: " + str(self.data.shape[0]))
         if self.data.shape[0] > 0:
             if self.checkConsecutive(now) == False:
                 self.buysLockedCounter = 2
@@ -352,6 +339,7 @@ class moneyBot:
 
         self.data = self.data.append(rowdata, ignore_index=True)
 
+
         # generate moving averages
         for c in self.coinList:
             self.data[c + "_SMA"] = talib.SMA(self.data[c].values, timeperiod=self.movingAverageWindows)
@@ -361,7 +349,10 @@ class moneyBot:
             self.data[c + "_bolM"] = middle
             self.data[c + "_bolB"] = bottom
 
-        print(self.data.tail(30))
+        print(self.data.tail(31))
+
+        # # generate chart
+        # mpf.plot(self.data, index_col=1)
 
         return self.data
 
@@ -372,7 +363,7 @@ class moneyBot:
             print("Restoring state...")
 
             self.data = pd.read_pickle('dataframe.pickle')
-            print(self.data.tail(30))
+            print(self.data.tail(31))
 
         else:
 
@@ -416,7 +407,7 @@ class moneyBot:
 
     def printState(self):
 
-        print("Bought In:" + str(self.boughtIn))
+        print("Bought In: " + str(self.boughtIn))
 
         for c in self.coinState:
             if c.numHeld > 0.0:
@@ -454,7 +445,6 @@ class moneyBot:
             #is it time to pull prices?
             if (now.minute in self.runMinute):
                 self.data = self.updateDataframe(now)
-
                 #check for swing/miss on each coin here
                 if self.boughtIn == True:
                     for c in self.coinState:
@@ -478,11 +468,11 @@ class moneyBot:
 
                 for c in range(0, len(self.coinList)):
 
-                    if self.pricesGood == True and self.checkBuyCondition(c):
+                    if self.pricesGood and self.checkBuyCondition(c):
                         price = self.data.iloc[-1][self.coinList[c]]
                         self.buy(c, price)
 
-                    if self.boughtIn == True and self.pricesGood == True and self.checkSellCondition(c):
+                    if self.pricesGood and self.checkSellCondition(c):
                         price = self.data.iloc[-1][self.coinList[c]]
                         self.sell(c, price)
 
