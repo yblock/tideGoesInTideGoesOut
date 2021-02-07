@@ -7,7 +7,6 @@ import math
 import robin_stocks as r
 import tideconfig as cfg
 import talib
-import mplfinance as mpf
 
 class coin:
     purchasedPrice = 0.0
@@ -43,7 +42,7 @@ class moneyBot:
     boughtIn = False
 
     # used to determine if we have had a break in our incoming price data and hold buys if so
-    minutesBetweenUpdates = 2
+    minutesBetweenUpdates = 0
     buysLockedCounter = 0
     minConsecutiveSamples = 0
     pricesGood = False
@@ -90,6 +89,7 @@ class moneyBot:
         self.rsiWindow = cfg.config["rsiWindow"]
         print("RSI Window: " + str(self.rsiWindow))
         print("MA Window: " + str(self.movingAverageWindows))
+        self.minutesBetweenUpdates = cfg.config["minutesBetweenUpdates"]
 
         if self.rsiWindow > self.movingAverageWindows:
             self.minConsecutiveSamples = self.rsiWindow
@@ -145,7 +145,7 @@ class moneyBot:
     def getCash(self):
 
         # if you only want to trade part of your money, set this to (Available Cash - Amount to Trade)
-        reserve = 0.5
+        reserve = 0.5 # every time it buys, it will use half of current balance
 
         try:
             me = r.account.load_phoenix_account(info=None)
@@ -180,7 +180,7 @@ class moneyBot:
             price = round(self.roundDown(price, minPriceIncrement), 7)
             profit = (coinHeld * price) - (coinHeld * self.coinState[c].purchasedPrice)
 
-            print("Selling " + str(coinHeld) + " of " + str(self.coinList[c]) + " at price " + str(price) + " profit " + str(round(profit, 2)))
+            print("Trades not enabled. Would have sold " + str(coinHeld) + " of " + str(self.coinList[c]) + " at price " + str(price) + " profit " + str(round(profit, 2)))
 
             if self.tradesEnabled == True:
 
@@ -192,7 +192,7 @@ class moneyBot:
                     print("Got exception trying to sell, cancelling.")
                     return
 
-                print("LiveBot: Sold " + str(coinHeld) + " of " + str(self.coinList[c]) + " at price " + str(price) + " profit " + str(round(profit, 2)))
+                print("Trades enabled. Sold " + str(coinHeld) + " of " + str(self.coinList[c]) + " at price " + str(price) + " profit " + str(round(profit, 2)))
 
 
                 self.coinState[c].purchasedPrice = 0.0
@@ -261,7 +261,7 @@ class moneyBot:
         if math.isnan(movingAverage) == False and math.isnan(RSI) == False and math.isnan(bolB) == False:
             # attempt to buy if the price falls out of the bottom of bottom bollinger band and RSI is low. This should catch hard swings down that have a high likelyhood of recovering quickly.
             if (price < bolB) and (RSI <= 15):
-                print("Conditions met to buy! " + str(self.coinList[c]) + " fell out of bottom bollinger, and RSI is below 15... buying...")
+                print("Conditions met to buy! " + str(self.coinList[c]) + " fell out of bottom bollinger, and RSI is below 15... attempting to buy...")
                 return True
 
         return False
@@ -275,9 +275,7 @@ class moneyBot:
         print(str(self.coinList[c]) + " RSI: " + str(round(RSI, 0)))
 
         if math.isnan(RSI) == False and self.coinState[c].purchasedPrice > 0.0:
-            print("Checking sell condition...")
             if price > self.coinState[c].purchasedPrice + (self.coinState[c].purchasedPrice * self.sellAboveBuyPrice) and self.coinState[c].numHeld > 0.0:
-                print("Should be trying to sell...")
                 return True
 
         return False
@@ -320,9 +318,6 @@ class moneyBot:
         # tick down towards being able to buy again, if not there already.
         if self.buysLockedCounter > 0:
             self.buysLockedCounter = self.buysLockedCounter - 1
-
-        #reorder the columns
-        # self.data = self.data[["exec_time", "BTC", "BTC_SMA", "BTC_RSI", "BTC_bolU", "BTC_bolM", "BTC_bolB", "LTC", "LTC_SMA", "LTC_RSI", "LTC_bolU", "LTC_bolM", "LTC_bolB", "ETH", "ETH_SMA", "ETH_RSI", "ETH_bolU", "ETH_bolM", "ETH_bolB", "DOGE", "DOGE_SMA", "DOGE_RSI", "DOGE_bolU", "DOGE_bolM", "DOGE_bolB",]]
 
         rowdata = {}
 
@@ -455,7 +450,7 @@ class moneyBot:
                                 print("Got exception trying to get holdings while checking for swing/miss, cancelling.")
                                 return
 
-                            if (timeDiffBuyOrder.total_seconds() > (60 * 60 * 1) and coinHeld == 0.0):
+                            if (timeDiffBuyOrder.total_seconds() > (60) and coinHeld == 0.0):
                                 cancelled = self.cancelOrder(c.lastBuyOrderID)
                                 if cancelled == True:
                                     c.purchasedPrice = 0.0
