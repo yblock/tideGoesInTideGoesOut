@@ -145,7 +145,7 @@ class moneyBot:
     def getCash(self):
 
         # if you only want to trade part of your money, set this to (Available Cash - Amount to Trade)
-        reserve = 0.25
+        reserve = 0.5
 
         try:
             me = r.account.load_phoenix_account(info=None)
@@ -157,6 +157,7 @@ class moneyBot:
         if cash * reserve < 0.0:
             return 0.0
         else:
+            print("Liquid cash: " + str(cash))
             return cash * reserve
 
     def sell(self, c, price):
@@ -259,8 +260,8 @@ class moneyBot:
 
         if math.isnan(movingAverage) == False and math.isnan(RSI) == False and math.isnan(bolB) == False:
             # attempt to buy if the price falls out of the bottom of bottom bollinger band and RSI is low. This should catch hard swings down that have a high likelyhood of recovering quickly.
-            if (price < bolB) and (RSI <= 25):
-                print("Conditions met to buy! " + str(self.coinList[c]) + " fell out of bottom bollinger, and RSI is below 25... buying...")
+            if (price < bolB) and (RSI <= 15):
+                print("Conditions met to buy! " + str(self.coinList[c]) + " fell out of bottom bollinger, and RSI is below 15... buying...")
                 return True
 
         return False
@@ -271,12 +272,14 @@ class moneyBot:
         price = self.data.iloc[-1][self.coinList[c]]
         # movingAverage = self.data.iloc[-1][str(self.coinList[c]) + "_SMA"]
         RSI = self.data.iloc[-1][str(self.coinList[c]) + "_RSI"]
+        print(str(self.coinList[c]) + " RSI: " + str(round(RSI, 0)))
 
         if math.isnan(RSI) == False and self.coinState[c].purchasedPrice > 0.0:
-            if (price > self.coinState[c].purchasedPrice + (self.coinState[c].purchasedPrice * self.sellAboveBuyPrice) and RSI > 69) and self.coinState[c].numHeld > 0.0:
+            print("Checking sell condition...")
+            if price > self.coinState[c].purchasedPrice + (self.coinState[c].purchasedPrice * self.sellAboveBuyPrice) and self.coinState[c].numHeld > 0.0:
+                print("Should be trying to sell...")
                 return True
-            if price > self.coinState[c].purchasedPrice + (self.coinState[c].purchasedPrice * 0.05) and self.coinState[c].numHeld > 0.0:
-                return True
+
         return False
 
     def checkConsecutive(self, now):
@@ -310,7 +313,6 @@ class moneyBot:
 
     def updateDataframe(self, now):
         #we check this each time, so we don't need to lock for more than two cycles. It will set back to two if it fails on the next pass.
-        print("data shape: " + str(self.data.shape[0]))
         if self.data.shape[0] > 0:
             if self.checkConsecutive(now) == False:
                 self.buysLockedCounter = 2
@@ -350,9 +352,6 @@ class moneyBot:
             self.data[c + "_bolB"] = bottom
 
         print(self.data.tail(31))
-
-        # # generate chart
-        # mpf.plot(self.data, index_col=1)
 
         return self.data
 
@@ -407,21 +406,21 @@ class moneyBot:
 
     def printState(self):
 
-        print("Bought In: " + str(self.boughtIn))
+        print("Bought In: " + str(self.boughtIn) + "\n")
 
         for c in self.coinState:
             if c.numHeld > 0.0:
+                price = round(self.data.iloc[-1][c.name], 2)
+                currentValue = price * c.numHeld
 
                 print("Coin: " + str(c.name))
                 print("Held: " + str(c.numHeld))
                 print("Amount bought: " + str(c.numBought))
                 print("Time bought: " + str(c.timeBought))
                 print("Order ID: " + str(c.lastBuyOrderID))
-                print("Bought at: $" + str(c.purchasedPrice) + " for a total of $" + str(round(c.numBought * c.purchasedPrice, 2)))
-                price = self.data.iloc[-1][c.name]
-                print("Current price: $" + str(price))
-                currentValue = price * c.numHeld
-                print("Current value: $" + str(round(currentValue, 2)))
+                print("Bought at: $" + str(c.purchasedPrice) + " per coin for a total of $" + str(round(c.numBought * c.purchasedPrice, 2)))
+                print("Current price: $" + str(price) + " Needs to hit at least $" + str(round(((c.purchasedPrice *  self.sellAboveBuyPrice) + c.purchasedPrice), 2)) + " for position to be worth at least $" + str(round(c.numBought * c.purchasedPrice * self.sellAboveBuyPrice + (c.numBought * c.purchasedPrice), 2)))
+                print("Current position value: $" + str(round(currentValue, 2)))
         print("\n")
 
     def cancelOrder(self, orderID):
