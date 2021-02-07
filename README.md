@@ -5,11 +5,11 @@ Experimental crypto trading bot using robin-stocks. Such things are very risky. 
 ----------------
 
 ## Commands to be used in terminal/cmd 
-### Navigate to the directory you put your code in
+### Navigate to the directory you put your code in:
 `cd [path to the folder]`
-### Install Python packages with pip 
+### Install Python packages with pip:
 `pip install -r requirements.txt`
-### Run the Python script
+### Run the Python script:
 `python tideGoesInTideGoesOut.py`
 
 ----------------
