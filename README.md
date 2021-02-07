@@ -6,3 +6,4 @@ Experimental crypto trading bot using robin-stocks. Such things are very risky. 
 # Install Python packages with pip
 `pip install -r requirements.txt`
   
+https://youtu.be/ZzkRHFl2ppw
