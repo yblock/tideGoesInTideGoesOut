@@ -1,8 +1,8 @@
 
 tideconfig.py
-testing.py
 .DS_Store
 boughtIn.pickle
 dataframe.pickle
 state.pickle
 __pycache__*
+testingbot.py
