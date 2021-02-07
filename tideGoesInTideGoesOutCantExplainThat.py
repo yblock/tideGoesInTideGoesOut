@@ -12,22 +12,22 @@ class coin:
     purchasedPrice = 0.0
     numHeld = 0.0
     numBought = 0.0
-    name = ""
-    lastBuyOrder = ""
-    timeBought = ""
+    name = ''
+    lastBuyOrder = ''
+    timeBought = ''
 
-    def __init__(self, name=""):
-        print("Creating coin " + name)
+    def __init__(self, name=''):
+        print('Creating coin ' + name)
         self.name = name
         self.purchasedPrice = 0.0
         self.numHeld = 0.0
         self.numBought = 0.0
-        self.lastBuyOrderID = ""
-        self.timeBought = ""
+        self.lastBuyOrderID = ''
+        self.timeBought = ''
 
 class moneyBot:
 
-    #set these in tideconfig.py
+    # set these in tideconfig.py
     tradesEnabled = False
     buyBelowMA = 0.00
     sellAboveBuyPrice = .00
@@ -36,8 +36,8 @@ class moneyBot:
     runMinute = []
     coinList = []
     coinState = []
-    minIncrements = {}  #the smallest increment of a coin you can buy/sell
-    minPriceIncrements = {}   #the smallest fraction of a dollar you can buy/sell a coin with
+    minIncrements = {}  # the smallest increment of a coin you can buy/sell
+    minPriceIncrements = {}   # the smallest fraction of a dollar you can buy/sell a coin with
     data = pd.DataFrame()
     boughtIn = False
 
@@ -51,9 +51,9 @@ class moneyBot:
 
         self.loadConfig()
 
-        if path.exists("state.pickle"):
+        if path.exists('state.pickle'):
             # load state
-            print("Saved state found, loading.")
+            print('Saved state found, loading.')
             with open('state.pickle', 'rb') as f:
                 self.coinState = pickle.load(f)
 
@@ -63,7 +63,7 @@ class moneyBot:
         else:
 
             # create state storage object
-            print("No state saved, starting from scratch.")
+            print('No state saved, starting from scratch.')
             self.coinState = []
             for c in self.coinList:
                 print(c)
@@ -76,28 +76,28 @@ class moneyBot:
         return
 
     def loadConfig(self):
-        print("\nLoading Config...")
-        self.rh_user = cfg.rh["username"]
-        self.rh_pw = cfg.rh["password"]
-        self.sellAboveBuyPrice = float(cfg.config["sellLimit"])
-        print("Sell Limit " + str(self.sellAboveBuyPrice * 100) + "%")
-        self.movingAverageWindows = cfg.config["movingAverageWindows"]
-        self.runMinute = cfg.config["runMinute"]
-        self.coinList = cfg.config["coinList"]
-        self.tradesEnabled = cfg.config["tradesEnabled"]
-        print("Trades enabled: " + str(self.tradesEnabled))
-        self.rsiWindow = cfg.config["rsiWindow"]
-        print("RSI Window: " + str(self.rsiWindow))
-        print("MA Window: " + str(self.movingAverageWindows))
-        self.minutesBetweenUpdates = cfg.config["minutesBetweenUpdates"]
+        print('\nLoading Config...')
+        self.rh_user = cfg.rh['username']
+        self.rh_pw = cfg.rh['password']
+        self.sellAboveBuyPrice = float(cfg.config['sellLimit'])
+        print('Sell Limit ' + str(self.sellAboveBuyPrice * 100) + '%')
+        self.movingAverageWindows = cfg.config['movingAverageWindows']
+        self.runMinute = cfg.config['runMinute']
+        self.coinList = cfg.config['coinList']
+        self.tradesEnabled = cfg.config['tradesEnabled']
+        print('Trades enabled: ' + str(self.tradesEnabled))
+        self.rsiWindow = cfg.config['rsiWindow']
+        print('RSI Window: ' + str(self.rsiWindow))
+        print('MA Window: ' + str(self.movingAverageWindows))
+        self.minutesBetweenUpdates = cfg.config['minutesBetweenUpdates']
 
         if self.rsiWindow > self.movingAverageWindows:
             self.minConsecutiveSamples = self.rsiWindow
         else:
             self.minConsecutiveSamples = self.movingAverageWindows
-        print("Consecutive prices required: " + str(self.minConsecutiveSamples))
+        print('Consecutive prices required: ' + str(self.minConsecutiveSamples))
 
-        print("\n")
+        print('\n')
 
     def getPrices(self):
 
@@ -109,7 +109,7 @@ class moneyBot:
                 result = r.get_crypto_quote(c)
                 price = result['mark_price']
             except:
-                print("An exception occurred retrieving prices.")
+                print('An exception occurred retrieving prices.')
                 return emptyDict
 
             prices.update({c: float(price)})
@@ -137,7 +137,7 @@ class moneyBot:
                 if (symbol == ticker):
                     quantity = result[t]['quantity']
         except:
-            print("Got exception while getting holdings from RobinHood.")
+            print('Got exception while getting holdings from RobinHood.')
             quantity = -1.0
 
         return float(quantity)
@@ -151,36 +151,36 @@ class moneyBot:
             me = r.account.load_phoenix_account(info=None)
             cash = float(me['crypto_buying_power']['amount'])
         except:
-            print("An exception occurred getting cash amount.")
+            print('An exception occurred getting cash amount.')
             return -1.0
 
         if cash * reserve < 0.0:
             return 0.0
         else:
-            print("Liquid cash: " + str(cash))
+            print('Liquid cash: ' + str(cash))
             return cash * reserve
 
     def sell(self, c, price):
 
         if self.boughtIn == False:
-            print("Previous sale incomplete.")
+            print('Previous sale incomplete.')
             return
 
         coinHeld = self.getHoldings(self.coinState[c].name)
 
         if coinHeld == -1:
-            print("Got exception trying to get holdings in sell(), cancelling.")
+            print('Got exception trying to get holdings in sell(), cancelling.')
             return
 
-        print("RobinHood says you have " + str(coinHeld) + " of " + str(self.coinState[c].name))
+        print('RobinHood says you have ' + str(coinHeld) + ' of ' + str(self.coinState[c].name))
 
         if(coinHeld > 0.0):
-            #price needs to be specified to no more precision than listed in minPriceIncrement. Truncate to 7 decimal places to avoid floating point problems way out at the precision limit
+            # price needs to be specified to no more precision than listed in minPriceIncrement. Truncate to 7 decimal places to avoid floating point problems way out at the precision limit
             minPriceIncrement = self.minPriceIncrements[self.coinState[c].name]
             price = round(self.roundDown(price, minPriceIncrement), 7)
             profit = (coinHeld * price) - (coinHeld * self.coinState[c].purchasedPrice)
 
-            print("Trades not enabled. Would have sold " + str(coinHeld) + " of " + str(self.coinList[c]) + " at price " + str(price) + " profit " + str(round(profit, 2)))
+            print('Trades not enabled. Would have sold ' + str(coinHeld) + ' of ' + str(self.coinList[c]) + ' at price ' + str(price) + ' profit ' + str(round(profit, 2)))
 
             if self.tradesEnabled == True:
 
@@ -189,44 +189,44 @@ class moneyBot:
                     self.coinState[c].lastSellOrder = sellResult['id']
                     print(str(sellResult))
                 except:
-                    print("Got exception trying to sell, cancelling.")
+                    print('Got exception trying to sell, cancelling.')
                     return
 
-                print("Trades enabled. Sold " + str(coinHeld) + " of " + str(self.coinList[c]) + " at price " + str(price) + " profit " + str(round(profit, 2)))
+                print('Trades enabled. Sold ' + str(coinHeld) + ' of ' + str(self.coinList[c]) + ' at price ' + str(price) + ' profit ' + str(round(profit, 2)))
 
 
                 self.coinState[c].purchasedPrice = 0.0
                 self.coinState[c].numHeld = 0.0
                 self.coinState[c].numBought = 0.0
-                self.coinState[c].lastBuyOrderID = ""
-                self.coinState[c].timeBought = ""
+                self.coinState[c].lastBuyOrderID = ''
+                self.coinState[c].timeBought = ''
                 self.boughtIn = False
 
         return
 
     def buy(self, c, price):
 
-        #we are already in the process of a buy, don't submit another
+        # we are already in the process of a buy, don't submit another
         if self.boughtIn == True:
-            print("Previous buy incomplete.")
+            print('Previous buy incomplete.')
             return
 
         availableCash = self.getCash()
         if availableCash == -1:
-            print("Got an exception checking for available cash, canceling buy.")
+            print('Got an exception checking for available cash, canceling buy.')
             return
 
-        print("RobinHood says you have " + str(availableCash) + " in cash")
+        print('RobinHood says you have ' + str(availableCash) + ' in cash')
 
         if (availableCash > 1.0):
             minPriceIncrement = self.minPriceIncrements[self.coinState[c].name]
-            #price needs to be specified to no more precision than listed in minPriceIncrement. Truncate to 7 decimal places to avoid floating point problems way out at the precision limit
+            # price needs to be specified to no more precision than listed in minPriceIncrement. Truncate to 7 decimal places to avoid floating point problems way out at the precision limit
             price = round(self.roundDown(price, minPriceIncrement), 7)
             shares = (availableCash - .25)/price
             minShareIncrement = self.minIncrements[self.coinState[c].name]
             shares = round(self.roundDown(shares, minShareIncrement), 8)
             sellAt = price + (price * self.sellAboveBuyPrice)
-            print("Buying " + str(shares) + " shares of " + self.coinList[c] + " at " + str(price) + " selling at " + str(round(sellAt, 2)))
+            print('Buying ' + str(shares) + ' shares of ' + self.coinList[c] + ' at ' + str(price) + ' selling at ' + str(round(sellAt, 2)))
 
             if self.tradesEnabled == True:
                 try:
@@ -234,10 +234,10 @@ class moneyBot:
                     self.coinState[c].lastBuyOrderID = buyResult['id']
                     print(str(buyResult))
                 except:
-                    print("Got exception trying to buy, cancelling.")
+                    print('Got exception trying to buy, cancelling.')
                     return
 
-                print("Bought " + str(shares) + " shares of " + self.coinList[c] + " at " + str(price) + " selling at " + str(round(sellAt, 2)))
+                print('Bought ' + str(shares) + ' shares of ' + self.coinList[c] + ' at ' + str(price) + ' selling at ' + str(round(sellAt, 2)))
                 self.coinState[c].purchasedPrice = price
                 self.coinState[c].numHeld = shares
                 self.coinState[c].timeBought = str(datetime.datetime.now())
@@ -249,19 +249,19 @@ class moneyBot:
     def checkBuyCondition(self, c):
 
         if self.buysLockedCounter > 0:
-            print(str(self.coinList[c]) + ": Buys locked due to break in price update stream")
+            print(str(self.coinList[c]) + ': Buys locked due to break in price update stream')
             return False
 
         # look at values in last row only
         price = self.data.iloc[-1][self.coinList[c]]
-        movingAverage = self.data.iloc[-1][str(self.coinList[c]) + "_SMA"]
-        RSI = self.data.iloc[-1][str(self.coinList[c]) + "_RSI"]
-        bolB = self.data.iloc[-1][str(self.coinList[c]) + "_bolB"]
+        movingAverage = self.data.iloc[-1][str(self.coinList[c]) + '_SMA']
+        RSI = self.data.iloc[-1][str(self.coinList[c]) + '_RSI']
+        bolB = self.data.iloc[-1][str(self.coinList[c]) + '_bolB']
 
         if math.isnan(movingAverage) == False and math.isnan(RSI) == False and math.isnan(bolB) == False:
-            # attempt to buy if the price falls out of the bottom of bottom bollinger band and RSI is low. This should catch hard swings down that have a high likelyhood of recovering quickly.
+            # this is the heart of how the bot decides to buy a position. Modify this to fit your own trading strategy.
             if (price < bolB) and (RSI <= 15):
-                print("Conditions met to buy! " + str(self.coinList[c]) + " fell out of bottom bollinger, and RSI is below 15... attempting to buy...")
+                print('Conditions met to buy! ' + str(self.coinList[c]) + ' fell out of bottom bollinger, and RSI is below 15... attempting to buy...')
                 return True
 
         return False
@@ -270,10 +270,10 @@ class moneyBot:
 
         # look at values in last row only
         price = self.data.iloc[-1][self.coinList[c]]
-        # movingAverage = self.data.iloc[-1][str(self.coinList[c]) + "_SMA"]
-        RSI = self.data.iloc[-1][str(self.coinList[c]) + "_RSI"]
-        print(str(self.coinList[c]) + " RSI: " + str(round(RSI, 0)))
-
+        # check the RSI of coin[c]
+        RSI = self.data.iloc[-1][str(self.coinList[c]) + '_RSI']
+        print(str(self.coinList[c]) + ' RSI: ' + str(round(RSI, 0)))
+        # this is the heart of how the bot decides to sell a position. Modify this to fit your own trading strategy.
         if math.isnan(RSI) == False and self.coinState[c].purchasedPrice > 0.0:
             if price > self.coinState[c].purchasedPrice + (self.coinState[c].purchasedPrice * self.sellAboveBuyPrice) and self.coinState[c].numHeld > 0.0:
                 return True
@@ -282,20 +282,20 @@ class moneyBot:
 
     def checkConsecutive(self, now):
 
-        print("\nChecking for consecutive times..")
+        print('\nChecking for consecutive times..')
 
-        #check for break between now and last sample
+        # check for break between now and last sample
         lastDateStamp = self.data.iloc[-1]['exec_time']
         timeDelta = now - lastDateStamp
         minutes = (timeDelta.seconds/60)
         if minutes > self.minutesBetweenUpdates:
-            print("It has been too long since last price point gathered, holding buys.\n")
+            print('It has been too long since last price point gathered, holding buys.\n')
             return False
 
         if self.data.shape[0] <= 1:
             return True
 
-        #check for break in sequence of samples to minimum consecutive sample number
+        # check for break in sequence of samples to minimum consecutive sample number
         position = len(self.data) - 1
         for x in range(0, self.minConsecutiveSamples):
             t1 = self.data.iloc[position - x]['exec_time']
@@ -304,13 +304,13 @@ class moneyBot:
             minutes = (timeDelta.seconds/60)
 
             if minutes > self.minutesBetweenUpdates:
-                print("Interruption found in price data, holding buys until " + str(self.minutesBetweenUpdates) + " > " + str(minutes))
+                print('Interruption found in price data, holding buys until ' + str(self.minutesBetweenUpdates) + ' > ' + str(minutes))
                 return False
 
         return True
 
     def updateDataframe(self, now):
-        #we check this each time, so we don't need to lock for more than two cycles. It will set back to two if it fails on the next pass.
+        # we check this each time, so we don't need to lock for more than two cycles. It will set back to two if it fails on the next pass.
         if self.data.shape[0] > 0:
             if self.checkConsecutive(now) == False:
                 self.buysLockedCounter = 2
@@ -323,7 +323,7 @@ class moneyBot:
 
         currentPrices = self.getPrices()
         if len(currentPrices) == 0:
-            print("Exception received getting prices, not adding data, locking buys")
+            print('Exception received getting prices, not adding data, locking buys')
             self.buysLockedCounter = 2
             self.pricesGood = False
             return self.data
@@ -337,14 +337,14 @@ class moneyBot:
         self.data = self.data.append(rowdata, ignore_index=True)
 
 
-        # generate moving averages
+        # generate technical alaysis values (there are a TON more of these avialable in the TA-Lib library, see https://mrjbq7.github.io/ta-lib/funcs.html) These values are what the checkSellCondition and checkBuyCondition function will use to determine if it's time to buy and sell, so choose wisely!
         for c in self.coinList:
-            self.data[c + "_SMA"] = talib.SMA(self.data[c].values, timeperiod=self.movingAverageWindows)
-            self.data[c + "_RSI"] = talib.RSI(self.data[c].values, timeperiod=self.rsiWindow)
+            self.data[c + '_SMA'] = talib.SMA(self.data[c].values, timeperiod=self.movingAverageWindows)
+            self.data[c + '_RSI'] = talib.RSI(self.data[c].values, timeperiod=self.rsiWindow)
             upper, middle, bottom = talib.BBANDS(self.data[c].values, timeperiod=self.movingAverageWindows, nbdevup=2, nbdevdn=2, matype=0)
-            self.data[c + "_bolU"] = upper
-            self.data[c + "_bolM"] = middle
-            self.data[c + "_bolB"] = bottom
+            self.data[c + '_bolU'] = upper
+            self.data[c + '_bolM'] = middle
+            self.data[c + '_bolB'] = bottom
 
         print(self.data.tail(31))
 
@@ -352,9 +352,9 @@ class moneyBot:
 
     def loadDataframe(self):
 
-        if path.exists("dataframe.pickle"):
+        if path.exists('dataframe.pickle'):
 
-            print("Restoring state...")
+            print('Restoring state...')
 
             self.data = pd.read_pickle('dataframe.pickle')
             print(self.data.tail(31))
@@ -383,17 +383,11 @@ class moneyBot:
                 inc = result['min_order_quantity_increment']
                 p_inc = result['min_order_price_increment']
             except:
-                print("Failed to get increments from RobinHood. Are you connected to the internet? Exiting.")
+                print('Failed to get increments from RobinHood. Are you connected to the internet? Exiting.')
                 exit()
 
             self.minIncrements.update({code: float(inc)})
             self.minPriceIncrements.update({code: float(p_inc)})
-
-        print("Minimum sale increments:")
-        print(self.minIncrements)
-
-        print("Minimum price increments:")
-        print(self.minPriceIncrements)
 
     def roundDown(self, x, a):
         # rounds down x to the nearest multiple of a
@@ -401,30 +395,30 @@ class moneyBot:
 
     def printState(self):
 
-        print("Bought In: " + str(self.boughtIn) + "\n")
+        print('Bought In: ' + str(self.boughtIn) + '\n')
 
         for c in self.coinState:
             if c.numHeld > 0.0:
                 price = round(self.data.iloc[-1][c.name], 2)
                 currentValue = price * c.numHeld
 
-                print("Coin: " + str(c.name))
-                print("Held: " + str(c.numHeld))
-                print("Amount bought: " + str(c.numBought))
-                print("Time bought: " + str(c.timeBought))
-                print("Order ID: " + str(c.lastBuyOrderID))
-                print("Bought at: $" + str(c.purchasedPrice) + " per coin for a total of $" + str(round(c.numBought * c.purchasedPrice, 2)))
-                print("Current price: $" + str(price) + " Needs to hit at least $" + str(round(((c.purchasedPrice *  self.sellAboveBuyPrice) + c.purchasedPrice), 2)) + " for position to be worth at least $" + str(round(c.numBought * c.purchasedPrice * self.sellAboveBuyPrice + (c.numBought * c.purchasedPrice), 2)))
-                print("Current position value: $" + str(round(currentValue, 2)))
-        print("\n")
+                print('Coin: ' + str(c.name))
+                print('Held: ' + str(c.numHeld))
+                print('Amount bought: ' + str(c.numBought))
+                print('Time bought: ' + str(c.timeBought))
+                print('Order ID: ' + str(c.lastBuyOrderID))
+                print('Bought at: $' + str(c.purchasedPrice) + ' per coin for a total of $' + str(round(c.numBought * c.purchasedPrice, 2)))
+                print('Current price: $' + str(price) + ' Needs to hit at least $' + str(round(((c.purchasedPrice *  self.sellAboveBuyPrice) + c.purchasedPrice), 2)) + ' for position to be worth at least $' + str(round(c.numBought * c.purchasedPrice * self.sellAboveBuyPrice + (c.numBought * c.purchasedPrice), 2)))
+                print('Current position value: $' + str(round(currentValue, 2)))
+        print('\n')
 
     def cancelOrder(self, orderID):
-        print("Swing and miss, cancelling order " + orderID)
+        print('Swing and miss, cancelling order ' + orderID)
         try:
             cancelResult = r.cancel_crypto_order(orderID)
             print(str(cancelResult))
         except:
-            print("Got exception canceling order, will try again.")
+            print('Got exception canceling order, will try again.')
             return False
         return True
 
@@ -447,7 +441,7 @@ class moneyBot:
                             timeDiffBuyOrder = now - dt_timeBought
                             coinHeld = self.getHoldings(c.name)
                             if coinHeld == -1:
-                                print("Got exception trying to get holdings while checking for swing/miss, cancelling.")
+                                print('Got exception trying to get holdings while checking for swing/miss, cancelling.')
                                 return
 
                             if (timeDiffBuyOrder.total_seconds() > (60) and coinHeld == 0.0):
@@ -456,8 +450,8 @@ class moneyBot:
                                     c.purchasedPrice = 0.0
                                     c.numHeld = 0.0
                                     c.numBought = 0.0
-                                    c.lastBuyOrderID = ""
-                                    c.timeBought = ""
+                                    c.lastBuyOrderID = ''
+                                    c.timeBought = ''
                                     self.boughtIn = False
 
                 for c in range(0, len(self.coinList)):
@@ -481,5 +475,5 @@ def main():
     m.runBot()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
