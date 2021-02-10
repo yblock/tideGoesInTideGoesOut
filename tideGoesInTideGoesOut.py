@@ -407,10 +407,11 @@ class moneyBot:
         for c in self.coinState:
             if c.numHeld > 0.0:
                 price = round(self.data.iloc[-1][c.name], 2)
-                currentValue = price * c.numHeld
+                totalHeld = self.getHoldings(c.name)
+                currentValue = price * totalHeld
 
                 print('Coin: ' + str(c.name))
-                print('Held: ' + str(c.numHeld))
+                print('Held: ' + str(totalHeld))
                 print('Amount bought: ' + str(c.numBought))
                 print('Time bought: ' + str(c.timeBought))
                 print('Order ID: ' + str(c.lastBuyOrderID))
