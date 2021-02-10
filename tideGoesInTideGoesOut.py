@@ -206,14 +206,15 @@ class moneyBot:
         return
 
     def buy(self, c, price):
-
-        # we are already in the process of a buy, don't submit another
-        # if self.boughtIn == True:
-        #     print('Previous buy incomplete.')
-        #     return
-        if self.coinState[c].numHeld > 0.0:
-            print('Already holding ' + self.coinState.name + '. Let\'s resolve that position first.')
+        # currently this is ensuring only 1 position is open at a time
+        we are already in the process of a buy, don't submit another
+        if self.boughtIn == True:
+            print('Previous buy incomplete.')
             return
+        # swapping to this enables multi poistions, but the coin num held needs to be fixed as it is not currently cumulative. For me, if i buy in and the price continues to drop and meet my requirements, I would like to buy more to, and average the buy prices together to get my final sale price of the whole lot.
+        # if self.coinState[c].numHeld > 0.0:
+        #     print('Already holding ' + self.coinState.name + '. Let\'s resolve that position first.')
+        #     return
 
 
         availableCash = self.getCash()
