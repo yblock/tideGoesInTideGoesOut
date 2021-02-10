@@ -207,7 +207,7 @@ class moneyBot:
 
     def buy(self, c, price):
         # currently this is ensuring only 1 position is open at a time
-        we are already in the process of a buy, don't submit another
+        # we are already in the process of a buy, don't submit another
         if self.boughtIn == True:
             print('Previous buy incomplete.')
             return
