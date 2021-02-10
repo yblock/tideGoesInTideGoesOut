@@ -145,7 +145,7 @@ class moneyBot:
     def getCash(self):
 
         # if you only want to trade part of your money, set this to (Available Cash - Amount to Trade)
-        reserve = 0.5 # every time it buys, it will use half of current balance
+        reserve = 0.2 # every time it buys, it will use 20% of current avavilable RH balance
 
         try:
             me = r.account.load_phoenix_account(info=None)
@@ -180,8 +180,6 @@ class moneyBot:
             price = round(self.roundDown(price, minPriceIncrement), 7)
             profit = (coinHeld * price) - (coinHeld * self.coinState[c].purchasedPrice)
 
-            print('Trades not enabled. Would have sold ' + str(coinHeld) + ' of ' + str(self.coinList[c]) + ' at price ' + str(price) + ' profit ' + str(round(profit, 2)))
-
             if self.tradesEnabled == True:
 
                 try:
@@ -202,14 +200,21 @@ class moneyBot:
                 self.coinState[c].timeBought = ''
                 self.boughtIn = False
 
+            else:
+                print('Trades not enabled. Would have sold ' + str(coinHeld) + ' of ' + str(self.coinList[c]) + ' at price ' + str(price) + ' profit ' + str(round(profit, 2)))
+
         return
 
     def buy(self, c, price):
 
         # we are already in the process of a buy, don't submit another
-        if self.boughtIn == True:
-            print('Previous buy incomplete.')
+        # if self.boughtIn == True:
+        #     print('Previous buy incomplete.')
+        #     return
+        if self.coinState[c].numHeld > 0.0:
+            print('Already holding ' + self.coinState.name + '. Let\'s resolve that position first.')
             return
+
 
         availableCash = self.getCash()
         if availableCash == -1:
@@ -260,7 +265,8 @@ class moneyBot:
 
         if math.isnan(movingAverage) == False and math.isnan(RSI) == False and math.isnan(bolB) == False:
             # this is the heart of how the bot decides to buy a position. Modify this to fit your own trading strategy.
-            if (price < bolB) and (RSI <= 15):
+            # if (price < bolB) and (RSI <= 30):
+            if RSI <= 30:
                 print('Conditions met to buy! ' + str(self.coinList[c]) + ' fell out of bottom bollinger, and RSI is below 15... attempting to buy...')
                 return True
 
@@ -272,7 +278,7 @@ class moneyBot:
         price = self.data.iloc[-1][self.coinList[c]]
         # check the RSI of coin[c]
         RSI = self.data.iloc[-1][str(self.coinList[c]) + '_RSI']
-        print(str(self.coinList[c]) + ' RSI: ' + str(round(RSI, 0)))
+        print(str(self.coinList[c]) + ' RSI: ' + str(round(RSI, 2)))
         # this is the heart of how the bot decides to sell a position. Modify this to fit your own trading strategy.
         if math.isnan(RSI) == False and self.coinState[c].purchasedPrice > 0.0:
             if price > self.coinState[c].purchasedPrice + (self.coinState[c].purchasedPrice * self.sellAboveBuyPrice) and self.coinState[c].numHeld > 0.0:
