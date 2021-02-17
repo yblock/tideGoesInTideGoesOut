@@ -474,9 +474,9 @@ class moneyBot:
 
                 self.printState()
                 self.saveState()
-                time.sleep(59.9)
+                time.sleep(60)
 
-        time.sleep(30)
+            time.sleep(1)
 
 def main():
     m = moneyBot()
