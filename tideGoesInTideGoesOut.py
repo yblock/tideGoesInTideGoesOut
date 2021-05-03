@@ -4,7 +4,7 @@ import datetime
 import time
 import pandas as pd
 import math
-import robin_stocks as r
+import robin_stocks.robinhood as r
 import tideconfig as cfg
 import talib
 
