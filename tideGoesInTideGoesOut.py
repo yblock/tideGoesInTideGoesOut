@@ -15,6 +15,7 @@ class coin:
     name = ''
     lastBuyOrder = ''
     timeBought = ''
+    lastBuyQuantity = 0.0 
 
     def __init__(self, name=''):
         print('Creating coin ' + name)
@@ -24,6 +25,7 @@ class coin:
         self.numBought = 0.0
         self.lastBuyOrderID = ''
         self.timeBought = ''
+        self.lastBuyQuantity = 0.0  
 
 class moneyBot:
 
@@ -174,34 +176,36 @@ class moneyBot:
 
         print('RobinHood says you have ' + str(coinHeld) + ' of ' + str(self.coinState[c].name))
 
-        if(coinHeld > 0.0):
-            # price needs to be specified to no more precision than listed in minPriceIncrement. Truncate to 7 decimal places to avoid floating point problems way out at the precision limit
+        if self.coinState[c].lastBuyQuantity > 0.0:
             minPriceIncrement = self.minPriceIncrements[self.coinState[c].name]
             price = round(self.roundDown(price, minPriceIncrement), 7)
-            profit = (coinHeld * price) - (coinHeld * self.coinState[c].purchasedPrice)
+            profit = (self.coinState[c].lastBuyQuantity * price) - (self.coinState[c].lastBuyQuantity * self.coinState[c].purchasedPrice)
 
             if self.tradesEnabled == True:
 
                 try:
-                    sellResult = r.orders.order_sell_crypto_limit(self.coinList[c], coinHeld, price)
+                    sellResult = r.orders.order_sell_crypto_limit(self.coinList[c], self.coinState[c].lastBuyQuantity, price)
                     self.coinState[c].lastSellOrder = sellResult['id']
                     print(str(sellResult))
                 except Exception as e: 
                     print(f'Got exception trying to sell: {e}')
                     return
 
-                print('Trades enabled. Sold ' + str(coinHeld) + ' of ' + str(self.coinList[c]) + ' at price ' + str(price) + ' profit ' + str(round(profit, 2)))
+                print('Trades enabled. Sold ' + str(self.coinState[c].lastBuyQuantity) + ' of ' + str(self.coinList[c]) + ' at price ' + str(price) + ' profit ' + str(round(profit, 2)))
 
 
-                self.coinState[c].purchasedPrice = 0.0
-                self.coinState[c].numHeld = 0.0
-                self.coinState[c].numBought = 0.0
-                self.coinState[c].lastBuyOrderID = ''
-                self.coinState[c].timeBought = ''
-                self.boughtIn = False
+                self.coinState[c].numHeld -= self.coinState[c].lastBuyQuantity
+                self.coinState[c].lastBuyQuantity = 0.0
+                if self.coinState[c].numHeld == 0.0:
+                    self.coinState[c].purchasedPrice = 0.0
+                    self.coinState[c].numHeld = 0.0
+                    self.coinState[c].numBought = 0.0
+                    self.coinState[c].lastBuyOrderID = ''
+                    self.coinState[c].timeBought = ''
+                    self.boughtIn = False
 
             else:
-                print('Trades not enabled. Would have sold ' + str(coinHeld) + ' of ' + str(self.coinList[c]) + ' at price ' + str(price) + ' profit ' + str(round(profit, 2)))
+                print('Trades not enabled. Would have sold ' + str(self.coinState[c].lastBuyQuantity) + ' of ' + str(self.coinList[c]) + ' at price ' + str(price) + ' profit ' + str(round(profit, 2)))
 
         return
 
@@ -211,12 +215,7 @@ class moneyBot:
         if self.boughtIn == True:
             print('Previous buy incomplete.')
             return
-        # swapping to this enables multi poistions, but the coin num held needs to be fixed as it is not currently cumulative. For me, if i buy in and the price continues to drop and meet my requirements, I would like to buy more to, and average the buy prices together to get my final sale price of the whole lot.
-        # if self.coinState[c].numHeld > 0.0:
-        #     print('Already holding ' + self.coinState.name + '. Let\'s resolve that position first.')
-        #     return
-
-
+       
         availableCash = self.getCash()
         if availableCash == -1:
             print('Got an exception checking for available cash, canceling buy.')
@@ -245,9 +244,10 @@ class moneyBot:
 
                 print('Bought ' + str(shares) + ' shares of ' + self.coinList[c] + ' at ' + str(price) + ' selling at ' + str(round(sellAt, 2)))
                 self.coinState[c].purchasedPrice = price
-                self.coinState[c].numHeld = shares
+                self.coinState[c].numHeld += shares
                 self.coinState[c].timeBought = str(datetime.datetime.now())
-                self.coinState[c].numBought = shares
+                self.coinState[c].numBought += shares
+                self.coinState[c].lastBuyQuantity = shares  # Track the quantity bought in the last transaction
                 self.boughtIn = True
 
         return
@@ -265,7 +265,7 @@ class moneyBot:
         bolB = self.data.iloc[-1][str(self.coinList[c]) + '_bolB']
 
         if math.isnan(movingAverage) == False and math.isnan(RSI) == False and math.isnan(bolB) == False:
-            # this is the heart of how the bot decides to buy a position. Modify this to fit your own trading strategy.
+            # this is the heart of how the bot decides to BUY a position. Modify this to fit your own trading strategy.
             # if (price < bolB) and (RSI <= 30):
             if RSI <= 30:
                 print('Conditions met to buy! ' + str(self.coinList[c]) + ' fell out of bottom bollinger, and RSI is below 15... attempting to buy...')
@@ -280,7 +280,7 @@ class moneyBot:
         # check the RSI of coin[c]
         RSI = self.data.iloc[-1][str(self.coinList[c]) + '_RSI']
         print(str(self.coinList[c]) + ' RSI: ' + str(round(RSI, 2)))
-        # this is the heart of how the bot decides to sell a position. Modify this to fit your own trading strategy.
+        # this is the heart of how the bot decides to SELL a position. Modify this to fit your own trading strategy.
         if math.isnan(RSI) == False and self.coinState[c].purchasedPrice > 0.0:
             if price > self.coinState[c].purchasedPrice + (self.coinState[c].purchasedPrice * self.sellAboveBuyPrice) and self.coinState[c].numHeld > 0.0:
                 return True
