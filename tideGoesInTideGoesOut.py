@@ -4,7 +4,7 @@ import datetime
 import time
 import pandas as pd
 import math
-import robin_stocks as r
+import robin_stocks.robinhood as r 
 import tideconfig as cfg
 import talib
 
@@ -106,10 +106,10 @@ class moneyBot:
 
         for c in self.coinList:
             try:
-                result = r.get_crypto_quote(c)
+                result = r.crypto.get_crypto_quote(c) 
                 price = result['mark_price']
-            except:
-                print('An exception occurred retrieving prices.')
+            except Exception as e:  
+                print(f'An exception occurred retrieving prices: {e}')
                 return emptyDict
 
             prices.update({c: float(price)})
@@ -131,13 +131,13 @@ class moneyBot:
         # quantity_available may be better
         quantity = 0.0
         try:
-            result = r.get_crypto_positions()
+            result = r.crypto.get_crypto_positions()  
             for t in range(0, len(result)):
                 symbol = result[t]['currency']['code']
-                if (symbol == ticker):
+                if symbol == ticker:
                     quantity = result[t]['quantity']
-        except:
-            print('Got exception while getting holdings from RobinHood.')
+        except Exception as e: 
+            print(f'Got exception while getting holdings from RobinHood: {e}')
             quantity = -1.0
 
         return float(quantity)
@@ -148,10 +148,10 @@ class moneyBot:
         reserve = 0.2 # every time it buys, it will use 20% of current avavilable RH balance
 
         try:
-            me = r.account.load_phoenix_account(info=None)
-            cash = float(me['crypto_buying_power']['amount'])
-        except:
-            print('An exception occurred getting cash amount.')
+            me = r.profiles.load_account_profile() 
+            cash = float(me['crypto_buying_power'])
+        except Exception as e:  
+            print(f'An exception occurred getting cash amount: {e}')
             return -1.0
 
         if cash * reserve < 0.0:
@@ -183,11 +183,11 @@ class moneyBot:
             if self.tradesEnabled == True:
 
                 try:
-                    sellResult = r.order_sell_crypto_limit(str(self.coinList[c]), coinHeld, price)
+                    sellResult = r.orders.order_sell_crypto_limit(self.coinList[c], coinHeld, price)
                     self.coinState[c].lastSellOrder = sellResult['id']
                     print(str(sellResult))
-                except:
-                    print('Got exception trying to sell, cancelling.')
+                except Exception as e: 
+                    print(f'Got exception trying to sell: {e}')
                     return
 
                 print('Trades enabled. Sold ' + str(coinHeld) + ' of ' + str(self.coinList[c]) + ' at price ' + str(price) + ' profit ' + str(round(profit, 2)))
@@ -236,11 +236,11 @@ class moneyBot:
 
             if self.tradesEnabled == True:
                 try:
-                    buyResult = r.order_buy_crypto_limit(str(self.coinList[c]), shares, price)
+                    buyResult = r.orders.order_buy_crypto_limit(self.coinList[c], shares, price) 
                     self.coinState[c].lastBuyOrderID = buyResult['id']
                     print(str(buyResult))
-                except:
-                    print('Got exception trying to buy, cancelling.')
+                except Exception as e:  
+                    print(f'Got exception trying to buy: {e}')
                     return
 
                 print('Bought ' + str(shares) + ' shares of ' + self.coinList[c] + ' at ' + str(price) + ' selling at ' + str(round(sellAt, 2)))
@@ -386,11 +386,11 @@ class moneyBot:
             code = self.coinList[c]
 
             try:
-                result = r.get_crypto_info(code)
+                result = r.crypto.get_crypto_info(code) 
                 inc = result['min_order_quantity_increment']
                 p_inc = result['min_order_price_increment']
-            except:
-                print('Failed to get increments from RobinHood. Are you connected to the internet? Exiting.')
+            except Exception as e: 
+                print(f'Failed to get increments from RobinHood: {e}')
                 exit()
 
             self.minIncrements.update({code: float(inc)})
@@ -423,10 +423,10 @@ class moneyBot:
     def cancelOrder(self, orderID):
         print('Swing and miss, cancelling order ' + orderID)
         try:
-            cancelResult = r.cancel_crypto_order(orderID)
+            cancelResult = r.orders.cancel_crypto_order(orderID)  
             print(str(cancelResult))
-        except:
-            print('Got exception canceling order, will try again.')
+        except Exception as e:  
+            print(f'Got exception canceling order: {e}')
             return False
         return True
 
